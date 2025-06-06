@@ -1,10 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
+using GameInput;
 using Mirror;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class NetworkPlayer : NetworkBehaviour
 {
+    private InputReader _inputReader;
+
     [Header("Referencias")]
     public GameObject floating;
     public TextMesh txtName;
@@ -38,6 +42,8 @@ public class NetworkPlayer : NetworkBehaviour
         Camera.main.transform.SetParent(transform);
         Camera.main.transform.localPosition = Vector3.zero;
 
+      
+
         string _name = "Player_" + Random.Range(100, 999);
         Color _color = new Color(Random.value, Random.value, Random.value);
 
@@ -64,14 +70,14 @@ public class NetworkPlayer : NetworkBehaviour
     {
         if (!isLocalPlayer || isDead) return;
 
-        if (Input.GetButtonDown("Fire1"))
-            TryFire();
+        //if (Input.GetButtonDown("Fire1"))
+            //TryFire();
 
         if (Input.GetButtonDown("Fire2"))
             Melee();
 
-        if (Input.GetKeyDown(KeyCode.E))
-            TryPickupHealth();
+        //if (Input.GetKeyDown(KeyCode.E))
+          //  TryPickupHealth();
 
         if (Input.GetKeyDown(KeyCode.LeftControl))
             ShowScoreboard();
@@ -93,7 +99,7 @@ public class NetworkPlayer : NetworkBehaviour
 
     void Melee()
     {
-        
+
     }
 
     void TryPickupHealth()
@@ -113,7 +119,7 @@ public class NetworkPlayer : NetworkBehaviour
     void ShowScoreboard()
     {
         Debug.Log("Mostrar Scoreboard");
-        
+
     }
 
     void SelectWeapon(int index)
@@ -129,16 +135,24 @@ public class NetworkPlayer : NetworkBehaviour
     [Command]
     void CmdShoot()
     {
-        RpcShoot();
+        GameObject bullet = Instantiate(activeWeapon.bullet, activeWeapon.firePos.position, activeWeapon.firePos.rotation);
+        Rigidbody rb = bullet.GetComponent<Rigidbody>();
+
+        if (rb != null)
+            rb.velocity = bullet.transform.forward * activeWeapon.speed;
+
+        NetworkServer.Spawn(bullet, connectionToClient); // el cliente que disparo tiene autoridad
     }
 
-    [ClientRpc]
+
+    /*[ClientRpc]
     void RpcShoot()
     {
         GameObject bullet = Instantiate(activeWeapon.bullet, activeWeapon.firePos.position, activeWeapon.firePos.rotation);
+        NetworkServer.Spawn(bullet, connectionToClient);
         bullet.GetComponent<Rigidbody>().velocity = bullet.transform.forward * activeWeapon.speed;
-        Destroy(bullet, activeWeapon.life);
-    }
+    }*/
+
 
     [Command]
     void CmdHeal(int amount)
@@ -220,5 +234,24 @@ public class NetworkPlayer : NetworkBehaviour
     {
         SelectWeapon(newIndex);
     }
+
+
+    public override void OnStartAuthority()
+    {
+        _inputReader = new InputReader();
+        _inputReader.FireEvent += TryFire;
+        _inputReader.PickupEvent += TryPickupHealth;
+    }
+
+    void OnDisable()
+    {
+        if (isOwned && _inputReader != null)
+        {
+            _inputReader.FireEvent -= TryFire;
+            _inputReader.PickupEvent -= TryPickupHealth;
+        }
+    }
+
+
 }
 

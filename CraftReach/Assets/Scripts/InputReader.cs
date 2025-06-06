@@ -13,6 +13,7 @@ public class InputReader
     public Vector2 LookInput { get; private set; }
 
     public event Action FireEvent;
+    public event Action PickupEvent;
 
     public InputReader()
     {
@@ -29,6 +30,8 @@ public class InputReader
         _controls.Player.Look.canceled += ctx => LookInput = Vector2.zero;
 
         _controls.Player.Fire.performed += ctx => FireEvent?.Invoke();
+
+        _controls.Player.Pickup.performed += ctx => PickupEvent?.Invoke();
 
         _controls.Enable();
     }
